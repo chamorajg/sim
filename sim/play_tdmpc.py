@@ -22,6 +22,7 @@ from tqdm import tqdm
 
 torch.backends.cudnn.benchmark = True
 __LOGS__ = "logs"
+RENDER = False
 
 
 def set_seed(seed):
@@ -99,22 +100,24 @@ def play(args: argparse.Namespace) -> None:
     env_cfg, _ = task_registry.get_cfgs(name=args.task)
     env, _ = task_registry.make_env(name=args.task, args=args)
 
-    fp = "/home/guest/sim/logs/2024-09-17_00-45-33_walk_state_dora/models/tdmpc_policy_350.pt"
+    fp = "/home/guest/sim/logs/2024-09-20_13-33-18_walk_state_dora/models/tdmpc_policy_50.pt"
     config = torch.load(fp)["config"]
     tdmpc_cfg = TDMPC_DoraConfigs(**config)
-    env.set_camera(env_cfg.viewer.pos, env_cfg.viewer.lookat)
-
-    camera_properties = gymapi.CameraProperties()
-    camera_properties.width = 1920
-    camera_properties.height = 1080
-    h1 = env.gym.create_camera_sensor(env.envs[0], camera_properties)
-    camera_offset = gymapi.Vec3(3, -3, 1)
-    camera_rotation = gymapi.Quat.from_axis_angle(gymapi.Vec3(-0.3, 0.2, 1), np.deg2rad(135))
-    actor_handle = env.gym.get_actor_handle(env.envs[0], 0)
-    body_handle = env.gym.get_actor_rigid_body_handle(env.envs[0], actor_handle, 0)
-    env.gym.attach_camera_to_body(
-        h1, env.envs[0], body_handle, gymapi.Transform(camera_offset, camera_rotation), gymapi.FOLLOW_POSITION
-    )
+    if RENDER:
+        env.set_camera(env_cfg.viewer.pos, env_cfg.viewer.lookat)
+        camera_properties = gymapi.CameraProperties()
+        camera_properties.width = 1920
+        camera_properties.height = 1080
+        h1 = env.gym.create_camera_sensor(env.envs[0], camera_properties)
+        camera_offset = gymapi.Vec3(3, -3, 1)
+        camera_rotation = gymapi.Quat.from_axis_angle(gymapi.Vec3(-0.3, 0.2, 1), np.deg2rad(135))
+        actor_handle = env.gym.get_actor_handle(env.envs[0], 0)
+        body_handle = env.gym.get_actor_rigid_body_handle(env.envs[0], actor_handle, 0)
+        env.gym.attach_camera_to_body(
+            h1, env.envs[0], body_handle, gymapi.Transform(camera_offset, camera_rotation), gymapi.FOLLOW_POSITION
+        )
+    else:
+        h1 = None
 
     set_seed(tdmpc_cfg.seed)
     work_dir = (
@@ -128,12 +131,14 @@ def play(args: argparse.Namespace) -> None:
     tdmpc_cfg.obs_shape = [state.shape[0]]
     tdmpc_cfg.action_shape = env.num_actions
     tdmpc_cfg.action_dim = env.num_actions
-    tdmpc_cfg.episode_length = 100  # int(env.max_episode_length // tdmpc_cfg.action_repeat)
+    tdmpc_cfg.episode_length = 100
     tdmpc_cfg.num_envs = env.num_envs
 
     L = logger.Logger(work_dir, tdmpc_cfg)
     log_dir = logger.make_dir(work_dir)
-    video = VideoRecorder(log_dir)
+    video = None
+    if RENDER:
+        video = VideoRecorder(log_dir)
 
     agent = TDMPC(tdmpc_cfg)
 

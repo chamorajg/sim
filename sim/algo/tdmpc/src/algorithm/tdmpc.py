@@ -250,11 +250,11 @@ class TDMPC:
 
             # Losses
             rho = self.cfg.rho**t
-            consistency_loss += loss_mask * rho * torch.mean(h.mse(z, next_z), dim=1, keepdim=True)
+            consistency_loss += loss_mask * rho * torch.mean(h.mse(z, next_z[t]), dim=1, keepdim=True)
             reward_loss += loss_mask * rho * h.mse(reward_pred, reward[t])
             for i in range(self.cfg.num_q):
-                value_loss += loss_mask * rho * h.mse(Qs[i], td_target)
-                priority_loss += loss_mask * rho * h.l1(Qs[i], td_target)
+                value_loss += loss_mask * rho * h.mse(Qs[i], td_target[t])
+                priority_loss += loss_mask * rho * h.l1(Qs[i], td_target[t])
 
         # Optimize model
         total_loss = (
