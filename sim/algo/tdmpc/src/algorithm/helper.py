@@ -190,7 +190,7 @@ class Flatten(nn.Module):
         return x.view(x.size(0), -1)
 
 
-def enc(cfg):
+def enc(cfg, layer_norm=False):
     """Returns a TOLD encoder."""
     pixels_enc_layers, state_enc_layers = None, None
     if cfg.modality in {"pixels", "all"}:
@@ -211,7 +211,7 @@ def enc(cfg):
             [
                 Flatten(),
                 nn.Linear(np.prod(out_shape), cfg.latent_dim),
-                nn.LayerNorm(cfg.latent_dim),
+                nn.LayerNorm(cfg.latent_dim) if layer_norm else nn.Identity(),
                 nn.Sigmoid(),
             ]
         )
@@ -221,13 +221,13 @@ def enc(cfg):
         state_dim = cfg.obs_shape[0] if cfg.modality == "state" else cfg.obs_shape["state"][0]
         state_enc_layers = [
             nn.Linear(state_dim, cfg.enc_dim),
-            nn.LayerNorm(cfg.enc_dim),
+            nn.LayerNorm(cfg.enc_dim) if layer_norm else nn.Identity(),
             nn.ELU(),
             nn.Linear(cfg.enc_dim, cfg.enc_dim),
-            nn.LayerNorm(cfg.enc_dim),
+            nn.LayerNorm(cfg.enc_dim) if layer_norm else nn.Identity(),
             nn.ELU(),
             nn.Linear(cfg.enc_dim, cfg.latent_dim),
-            nn.LayerNorm(cfg.latent_dim),
+            nn.LayerNorm(cfg.latent_dim) if layer_norm else nn.Identity(),
             nn.Tanh(),
         ]
         if cfg.modality == "state":
