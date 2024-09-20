@@ -93,8 +93,10 @@ def train(args: argparse.Namespace) -> None:
     tdmpc_cfg.num_envs = env.num_envs
     tdmpc_cfg.max_episode_length = int(env.max_episode_length)
     tdmpc_cfg.max_clip_actions = env.cfg.normalization.clip_actions
-    tdmpc_cfg.clip_actions = f"linear(1, {env.cfg.normalization.clip_actions}, 50000)"
-    print(tdmpc_cfg.clip_actions)
+    tdmpc_cfg.clip_actions = (
+        # f"{env.cfg.normalization.clip_actions}"
+        f"linear(1, {env.cfg.normalization.clip_actions}, {tdmpc_cfg.seed_steps})"
+    )
 
     agent = TDMPC(tdmpc_cfg)
     buffer = ReplayBuffer(tdmpc_cfg)
@@ -108,7 +110,9 @@ def train(args: argparse.Namespace) -> None:
         if init_step is None:
             episode_idx = int(fp.split(".")[0].split("_")[-1])
             init_step = episode_idx * tdmpc_cfg.episode_length
-    env_step = init_step * tdmpc_cfg.episode_length
+        else:
+            episode_idx = int(init_step // tdmpc_cfg.episode_length)
+    env_step = init_step * tdmpc_cfg.num_envs
     episode = Episode(tdmpc_cfg, state)
 
     L = logger.Logger(work_dir, tdmpc_cfg)
