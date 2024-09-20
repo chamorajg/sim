@@ -246,11 +246,11 @@ def enc(cfg):
     return Multiplexer(nn.ModuleDict(encoders))
 
 
-def mlp(in_dim, mlp_dim, out_dim, act_fn=nn.ReLU(), layer_norm=True):
+def mlp(in_dim, mlp_dim, out_dim, act_fn=nn.ELU(), layer_norm=False):
     """Returns an MLP."""
     if isinstance(mlp_dim, int):
         mlp_dim = [mlp_dim, mlp_dim]
-    layers = [nn.Linear(in_dim, mlp_dim[0]), nn.LayerNorm(mlp_dim[0]) if layer_norm else nn.Identity(), act_fn]
+    layers = [nn.Linear(in_dim, mlp_dim[0]), nn.LayerNorm(mlp_dim[0]), act_fn]
     for i in range(len(mlp_dim) - 1):
         layers += [
             nn.Linear(mlp_dim[i], mlp_dim[i + 1]),
@@ -261,20 +261,20 @@ def mlp(in_dim, mlp_dim, out_dim, act_fn=nn.ReLU(), layer_norm=True):
     return nn.Sequential(*layers)
 
 
-def dynamics(in_dim, mlp_dim, out_dim, act_fn=nn.Mish()):
+def dynamics(in_dim, mlp_dim, out_dim, act_fn=nn.Mish(), layer_norm=False):
     """Returns a dynamics network."""
     return nn.Sequential(
         mlp(in_dim, mlp_dim, out_dim, act_fn),
-        nn.LayerNorm(out_dim),
+        nn.LayerNorm(out_dim) if layer_norm else nn.Identity(),
         act_fn,
     )
 
 
-def q(in_dim, mlp_dim, act_fn=nn.ReLU(), layer_norm=True):
+def q(in_dim, mlp_dim, act_fn=nn.ELU(), layer_norm=False):
     """Returns a Q-function that uses Layer Normalization."""
     if isinstance(mlp_dim, int):
         mlp_dim = [mlp_dim, mlp_dim]
-    layers = [nn.Linear(in_dim, mlp_dim[0]), nn.LayerNorm(mlp_dim[0]) if layer_norm else nn.Identity(), act_fn]
+    layers = [nn.Linear(in_dim, mlp_dim[0]), nn.LayerNorm(mlp_dim[0]), act_fn]
     for i in range(len(mlp_dim) - 1):
         layers += [
             nn.Linear(mlp_dim[i], mlp_dim[i + 1]),

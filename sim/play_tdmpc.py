@@ -10,7 +10,7 @@ from sim.utils.helpers import get_args
 from sim.algo.tdmpc.src import logger
 from sim.algo.tdmpc.src.algorithm.helper import Episode, ReplayBuffer
 from sim.algo.tdmpc.src.algorithm.tdmpc import TDMPC
-from dataclasses import dataclass, field
+from sim.algo.tdmpc.src.config import TDMPC_DoraConfigs
 from isaacgym import gymapi
 from typing import List
 import time
@@ -22,73 +22,6 @@ from tqdm import tqdm
 
 torch.backends.cudnn.benchmark = True
 __LOGS__ = "logs"
-
-
-@dataclass
-class TDMPC_DoraConfigs:
-    seed: int = 42
-    task: str = "walk"
-    exp_name: str = "dora"
-    device: str = "cuda:0"
-    num_envs: int = 10
-    episode_length: int = 100
-    max_episode_length: int = 1000
-    max_clip_actions: float = 1.0
-    clip_actions: str = f"linear(1, {max_clip_actions}, 100000)"
-
-    lr: float = 1e-3
-    modality: str = "state"
-    enc_dim: int = 512  # 256
-    mlp_dim = [512, 256]  # [256, 256]
-    latent_dim: int = 100
-
-    iterations: int = 12
-    num_samples: int = 512
-    num_elites: int = 50
-    mixture_coef: float = 0.05
-    min_std: float = 0.05
-    temperature: float = 0.5
-    momentum: float = 0.1
-    horizon: int = 5
-    std_schedule: str = f"linear(0.5, {min_std}, 3000)"
-    horizon_schedule: str = f"linear(1, {horizon}, 2500)"
-
-    batch_size: int = 1024
-    max_buffer_size: int = 1000000
-    reward_coef: float = 1
-    value_coef: float = 0.5
-    consistency_coef: float = 2
-    rho: float = 0.5
-    kappa: float = 0.1
-    per_alpha: float = 0.6
-    per_beta: float = 0.4
-    grad_clip_norm: float = 10
-    seed_steps: int = 750
-    update_freq: int = 2
-    tau: int = 0.01
-
-    discount: float = 0.99
-    buffer_device: str = "cpu"
-    train_steps: int = int(1e6)
-    num_q: int = 3
-
-    action_repeat: int = 2
-    eval_freq: int = 15000
-    eval_freq_episode: int = 10
-    eval_episodes: int = 1
-
-    save_model: bool = True
-    save_video: bool = False
-    eval_model: bool = False
-    save_buffer: bool = True
-    eval_freq_episode: int = 10
-    eval_episodes: int = 1
-    save_buffer_freq_episode: int = 50
-    save_model_freq_episode: int = 10
-
-    use_wandb: bool = False
-    wandb_entity: str = "crajagopalan"
-    wandb_project: str = "xbot"
 
 
 def set_seed(seed):

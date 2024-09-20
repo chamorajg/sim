@@ -15,7 +15,7 @@ class StompyProCfg(LeggedRobotCfg):
 
     class env(LeggedRobotCfg.env):
         # change the observation dim
-        frame_stack = 15
+        frame_stack = 3
         c_frame_stack = 3
         num_single_obs = 11 + NUM_JOINTS * 3
         num_observations = int(frame_stack * num_single_obs)
@@ -173,7 +173,7 @@ class StompyProCfg(LeggedRobotCfg):
         only_positive_rewards = True
         # tracking reward = exp(error*sigma)
         tracking_sigma = 5
-        max_contact_force = 400  # forces above this value are penalized
+        max_contact_force = 800  # forces above this value are penalized
 
         class scales:
             # reference motion tracking
@@ -197,9 +197,9 @@ class StompyProCfg(LeggedRobotCfg):
             # above this was removed
             # base pos
             default_joint_pos = 1.0
-            orientation = 1
-            base_height = 0.2
-            base_acc = 0.2
+            orientation = 10.0
+            base_height = 10
+            base_acc = 2
             # energy
             action_smoothness = -0.002
             torques = -1e-5

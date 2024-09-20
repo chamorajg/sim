@@ -13,8 +13,8 @@ class TOLD(nn.Module):
         super().__init__()
         self.cfg = cfg
         self._encoder = h.enc(cfg)
-        self._dynamics = h.mlp(cfg.latent_dim + cfg.action_dim, cfg.mlp_dim, cfg.latent_dim)
-        self._reward = h.mlp(cfg.latent_dim + cfg.action_dim, cfg.mlp_dim, 1)
+        self._dynamics = h.mlp(cfg.latent_dim + cfg.action_dim, cfg.dynamics_mlp_dim, cfg.latent_dim)
+        self._reward = h.mlp(cfg.latent_dim + cfg.action_dim, cfg.reward_mlp_dim, 1)
         self._pi = h.mlp(cfg.latent_dim, cfg.mlp_dim, cfg.action_dim)
         self._Qs = nn.ModuleList([h.q(cfg.latent_dim + cfg.action_dim, cfg.mlp_dim) for _ in range(cfg.num_q)])
         self.apply(h.orthogonal_init)
@@ -112,9 +112,9 @@ class TDMPC:
         clip_actions = h.linear_schedule(self.cfg.clip_actions, step=step)
         # Seed steps
         if step < self.cfg.seed_steps and not eval_mode:
-            return torch.empty(self.cfg.action_dim, dtype=torch.float32, device=self.device).uniform_(
-                -clip_actions, clip_actions
-            )
+            return torch.empty(
+                (self.cfg.num_envs, self.cfg.action_dim), dtype=torch.float32, device=self.device
+            ).uniform_(-clip_actions, clip_actions)
 
         # Sample policy trajectories
         obs = obs.clone().to(self.device, dtype=torch.float32).unsqueeze(1)
@@ -205,13 +205,20 @@ class TDMPC:
     @torch.no_grad()
     def _td_target(self, next_obs, reward, mask=1.0):
         """Compute the TD-target from a reward and the observation at the following time step."""
-        next_z = self.model.h(next_obs)
-        td_target = (
-            reward
-            + self.cfg.discount
-            * mask
-            * torch.min(self.model_target.Q(next_z, self.model.pi(next_z, self.cfg.min_std)), dim=0)[0]
-        )
+        next_z = self.model.h(next_obs[-1])
+        td_target = torch.zeros_like(reward)
+        h = reward.shape[0]
+        actions = self.model_target.pi(next_z, self.cfg.min_std)
+        next_q = torch.min(self.model_target.Q(next_z, actions), dim=0)[0]
+        for t in range(h - 1, -1, -1):
+            td_target[t] = reward[t] + self.cfg.discount * mask[t] * next_q
+            next_q = td_target[t]
+        # td_target = (
+        #     reward
+        #     + self.cfg.discount
+        #     * mask
+        #     * torch.min(self.model_target.Q(next_z, self.model.pi(next_z, self.cfg.min_std)), dim=0)[0]
+        # )
         return td_target
 
     def update(self, replay_buffer, step):
