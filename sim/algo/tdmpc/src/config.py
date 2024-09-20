@@ -55,12 +55,12 @@ class TDMPC_DoraConfigs:
 
     save_model: bool = True
     save_video: bool = False
-    save_buffer: bool = True
+    save_buffer: bool = False
     eval_model: bool = False
     eval_freq_episode: int = 10
     eval_episodes: int = 1
     save_buffer_freq_episode: int = 50
-    save_model_freq_episode: int = 50
+    save_model_freq_episode: int = 10
 
     use_wandb: bool = False
     wandb_entity: str = "crajagopalan"
