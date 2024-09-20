@@ -205,13 +205,12 @@ class TDMPC:
         return pi_loss.item()
 
     @torch.no_grad()
-    def _td_target(self, next_obs, reward, mask=1.0):
+    def _td_target(self, next_z, reward, mask=1.0):
         """Compute the TD-target from a reward and the observation at the following time step."""
-        next_z = self.model.h(next_obs[-1])
         td_target = torch.zeros_like(reward)
         h = reward.shape[0]
-        actions = self.model_target.pi(next_z, self.cfg.min_std)
-        next_q = torch.min(self.model_target.Q(next_z, actions), dim=0)[0]
+        actions = self.model_target.pi(next_z[-1], self.cfg.min_std)
+        next_q = torch.min(self.model_target.Q(next_z[-1], actions), dim=0)[0]
         for t in range(h - 1, -1, -1):
             td_target[t] = reward[t] + self.cfg.discount * mask[t] * next_q
             next_q = td_target[t]
@@ -235,6 +234,10 @@ class TDMPC:
         zs = [z.detach()]
 
         loss_mask = torch.ones_like(mask[0], device=self.device)
+        with torch.no_grad():
+            next_obs = self.aug(next_obses)
+            next_z = self.model_target.h(next_obs)
+            td_target = self._td_target(next_z, mask, reward)
 
         consistency_loss, reward_loss, value_loss, priority_loss = 0, 0, 0, 0
         for t in range(self.cfg.horizon):
@@ -243,10 +246,6 @@ class TDMPC:
             # Predictions
             Qs = self.model.Q(z, action[t])
             z, reward_pred = self.model.next(z, action[t])
-            with torch.no_grad():
-                next_obs = self.aug(next_obses[t])
-                next_z = self.model_target.h(next_obs)
-                td_target = self._td_target(next_obs, mask[t], reward[t])
             zs.append(z.detach())
 
             # Losses
