@@ -246,7 +246,7 @@ def enc(cfg):
     return Multiplexer(nn.ModuleDict(encoders))
 
 
-def mlp(in_dim, mlp_dim, out_dim, act_fn=nn.ReLU(), layer_norm=True):
+def mlp(in_dim, mlp_dim, out_dim, act_fn=nn.ELU(), layer_norm=True, last_layer_act=None):
     """Returns an MLP."""
     if isinstance(mlp_dim, int):
         mlp_dim = [mlp_dim, mlp_dim]
@@ -257,7 +257,7 @@ def mlp(in_dim, mlp_dim, out_dim, act_fn=nn.ReLU(), layer_norm=True):
             nn.LayerNorm(mlp_dim[i + 1]) if layer_norm else nn.Identity(),
             act_fn,
         ]
-    layers += [nn.Linear(mlp_dim[-1], out_dim)]
+    layers += [nn.Linear(mlp_dim[-1], out_dim), last_layer_act if last_layer_act is not None else nn.Identity()]
     return nn.Sequential(*layers)
 
 
@@ -270,7 +270,7 @@ def dynamics(in_dim, mlp_dim, out_dim, act_fn=nn.Mish()):
     )
 
 
-def q(in_dim, mlp_dim, act_fn=nn.ReLU(), layer_norm=True):
+def q(in_dim, mlp_dim, act_fn=nn.ELU(), layer_norm=True):
     """Returns a Q-function that uses Layer Normalization."""
     if isinstance(mlp_dim, int):
         mlp_dim = [mlp_dim, mlp_dim]
@@ -389,7 +389,7 @@ class Episode(object):
             dtype=torch.float32,
             device=self.device,
         )
-        self.dones = torch.empty(
+        self.dones = torch.zeros(
             (
                 cfg.num_envs,
                 self.capacity,
@@ -423,10 +423,8 @@ class Episode(object):
 
     @property
     def episode_length(self):
-        num_dones = self.dones[:, : self._idx].sum().item()
-        if num_dones > 0:
-            return float(self._idx) * self.cfg.num_envs / num_dones
-        return float(self._idx)
+        num_dones = self.dones.sum().item()
+        return self.dones[..., :self._idx].numel() / ( num_dones + self.cfg.num_envs)
 
     @classmethod
     def from_trajectory(cls, cfg, obses, actions, rewards, dones=None, masks=None):
@@ -492,6 +490,8 @@ class Episode(object):
         self.rewards[:, self._idx] = reward.detach().cpu()
         self.dones[:, self._idx] = done.detach().cpu()
         self.masks[:, self._idx] = 1.0 - timeouts.detach().cpu().float()  # TODO
+        if timeouts.any():
+            self.masks[timeouts, max(self._idx - self.cfg.horizon + 2, 0): self._idx + 1 ] = 0.0
         self.cumulative_reward += reward.detach().cpu()
         self.done = done.detach().cpu()
         self.success = torch.logical_or(self.success, success.detach().cpu())
@@ -605,7 +605,7 @@ class ReplayBuffer:
         idxs = torch.arange(self.idx, self.idx + self.cfg.num_envs * self.ep_len) % self.capacity
         self._sampling_idx = (self.idx + self.cfg.num_envs * self.ep_len) % self.capacity
         mask_copy = episode.masks.clone()
-        mask_copy[:, episode._idx - self.cfg.horizon :] = 0.0
+        mask_copy[:, episode._idx - self.cfg.horizon + 1:] = 0.0
         if self.cfg.modality in {"pixels", "state"}:
             self._obs[idxs] = (
                 episode.obses.flatten(0, 1) if self.cfg.modality == "state" else episode.obses[:, -3:].flatten(0, 1)

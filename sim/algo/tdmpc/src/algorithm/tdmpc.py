@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from copy import deepcopy
 from dataclasses import asdict
 import sim.algo.tdmpc.src.algorithm.helper as h
@@ -13,8 +14,8 @@ class TOLD(nn.Module):
         super().__init__()
         self.cfg = cfg
         self._encoder = h.enc(cfg)
-        self._dynamics = h.mlp(cfg.latent_dim + cfg.action_dim, cfg.mlp_dim, cfg.latent_dim)
-        self._reward = h.mlp(cfg.latent_dim + cfg.action_dim, cfg.mlp_dim, 1)
+        self._dynamics = h.mlp(cfg.latent_dim + cfg.action_dim, cfg.mlp_dim, cfg.latent_dim, last_layer_act = nn.Tanh())
+        self._reward = h.mlp(cfg.latent_dim + cfg.action_dim, cfg.mlp_dim, 1, last_layer_act = nn.ELU())
         self._pi = h.mlp(cfg.latent_dim, cfg.mlp_dim, cfg.action_dim)
         self._Qs = nn.ModuleList([h.q(cfg.latent_dim + cfg.action_dim, cfg.mlp_dim) for _ in range(cfg.num_q)])
         self.apply(h.orthogonal_init)
@@ -38,7 +39,7 @@ class TOLD(nn.Module):
 
     def pi(self, z, std=0):
         """Samples an action from the learned policy (pi)."""
-        mu = self.cfg.max_clip_actions * torch.tanh(self._pi(z))
+        mu = F.hardtanh(self._pi(z), min_val=-self.cfg.max_clip_actions + 1e-5, max_val=self.cfg.max_clip_actions - 1e-5)
         if std > 0:
             std = torch.ones_like(mu) * std
             return h.TruncatedNormal(mu, std, low=-self.cfg.max_clip_actions, high=self.cfg.max_clip_actions).sample(
@@ -132,10 +133,7 @@ class TDMPC:
         mean = torch.zeros(horizon, self.cfg.num_envs, self.cfg.action_dim, device=self.device)
         std = 1.5 * torch.ones(horizon, self.cfg.num_envs, self.cfg.action_dim, device=self.device) * clip_actions
 
-        if isinstance(t0, bool) and t0 and hasattr(self, "_prev_mean") and self._prev_mean.shape[0] > 1:
-            _prev_h = self._prev_mean.shape[0] - 1
-            mean[:_prev_h] = self._prev_mean[1:]
-        elif torch.is_tensor(t0) and t0.any() and hasattr(self, "_prev_mean") and self._prev_mean.shape[0] > 1:
+        if t0 and hasattr(self, "_prev_mean") and self._prev_mean.shape[0] > 1:
             _prev_h = self._prev_mean.shape[0] - 1
             mean[:_prev_h] = self._prev_mean[1:]
 
@@ -178,8 +176,7 @@ class TDMPC:
             -2, select_indices.unsqueeze(0).unsqueeze(-1).repeat(horizon, 1, 1, self.cfg.action_dim)
         ).squeeze(-2)
         self._prev_mean = mean
-        mean, std = actions[0], _std[0]
-        a = mean
+        a, std = actions[0], _std[0]
         if not eval_mode:
             a = h.TruncatedNormal(a, std, low=-clip_actions, high=clip_actions).sample()
         return a
@@ -203,7 +200,7 @@ class TDMPC:
         return pi_loss.item()
 
     @torch.no_grad()
-    def _td_target(self, next_obs, reward, mask=1.0):
+    def _td_target(self, next_obs, reward, mask):
         """Compute the TD-target from a reward and the observation at the following time step."""
         next_z = self.model.h(next_obs)
         td_target = (
@@ -225,32 +222,31 @@ class TDMPC:
         z = self.model.h(self.aug(obs))
         zs = [z.detach()]
 
-        loss_mask = torch.ones_like(mask[0], device=self.device)
 
-        consistency_loss, reward_loss, value_loss, priority_loss = 0, 0, 0, 0
+        latent_loss, consistency_loss, reward_loss, value_loss, priority_loss = 0, 0, 0, 0, 0
         for t in range(self.cfg.horizon):
-            if t > 0:
-                loss_mask = loss_mask * mask[t - 1]
             # Predictions
             Qs = self.model.Q(z, action[t])
             z, reward_pred = self.model.next(z, action[t])
             with torch.no_grad():
                 next_obs = self.aug(next_obses[t])
                 next_z = self.model_target.h(next_obs)
-                td_target = self._td_target(next_obs, mask[t], reward[t])
+                td_target = self._td_target(next_obs, reward[t], mask[t])
             zs.append(z.detach())
-
+            _z = self.model.h(self.aug(next_obses[t]))
             # Losses
             rho = self.cfg.rho**t
-            consistency_loss += loss_mask[t] * rho * torch.mean(h.mse(z, next_z), dim=1, keepdim=True)
-            reward_loss += loss_mask[t] * rho * h.mse(reward_pred, reward[t])
+            consistency_loss += mask[t] * rho * torch.sum(h.mse(z, next_z), dim=1, keepdim=True)
+            latent_loss += rho * torch.sum(h.mse(_z, next_z), dim=1, keepdim=True)
+            reward_loss += rho * (h.mse(reward_pred, reward[t]) + h.l1(reward_pred, reward[t]))
             for i in range(self.cfg.num_q):
-                value_loss += loss_mask[t] * rho * h.mse(Qs[i], td_target)
-                priority_loss += loss_mask[t] * rho * h.l1(Qs[i], td_target)
+                value_loss += rho * h.mse(Qs[i], td_target)
+                priority_loss += rho * h.l1(Qs[i], td_target)
 
         # Optimize model
         total_loss = (
             self.cfg.consistency_coef * consistency_loss.clamp(max=1e4)
+            + self.cfg.consistency_coef * latent_loss.clamp(max=1e4)
             + self.cfg.reward_coef * reward_loss.clamp(max=1e4)
             + self.cfg.value_coef * value_loss.clamp(max=1e4)
         )
@@ -273,6 +269,9 @@ class TDMPC:
             "consistency_loss": float(consistency_loss.mean().item()),
             "reward_loss": float(reward_loss.mean().item()),
             "value_loss": float(value_loss.mean().item()),
+            "latent_loss": float(latent_loss.mean().item()),
+            "td_target": float(td_target.mean().item()),
+            "reward": float(reward.mean().item()),
             "pi_loss": pi_loss if step % self.cfg.update_freq == 0 else 0.0,
             "total_loss": float(total_loss.mean().item()),
             "weighted_loss": float(weighted_loss.mean().item()),
