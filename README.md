@@ -15,7 +15,6 @@
 [![ruff](https://img.shields.io/badge/Linter-Ruff-red.svg?labelColor=gray)](https://github.com/charliermarsh/ruff)
 <br />
 [![Python Checks](https://github.com/kscalelabs/sim/actions/workflows/test.yml/badge.svg)](https://github.com/kscalelabs/sim/actions/workflows/test.yml)
-[![Update Stompy S3 Model](https://github.com/kscalelabs/sim/actions/workflows/update_stompy_s3.yml/badge.svg)](https://github.com/kscalelabs/sim/actions/workflows/update_stompy_s3.yml)
 
 </div>
 
@@ -49,7 +48,12 @@ conda activate kscale-sim-library
 make install-dev
 ```
 
-3. Install third-party dependencies:
+3. Configure environment variables:
+```bash
+conda env config vars set MODEL_DIR=sim/resources
+```
+
+4. Install third-party dependencies:
 
 Manually download `IsaacGym_Preview_4_Package.tar.gz` from https://developer.nvidia.com/isaac-gym, and run:
 ```bash
@@ -61,26 +65,22 @@ make install-third-party-external
 ```
 
 ### Running experiments
-1. To run stompymini:
-```bash
-export MODEL_DIR=sim/resources/stompymini
-```
-2. Run training with the following command:
+1. Run walking training with the following command:
 ```bash
 python sim/train.py --task=stompymini --num_envs=4096 --headless
 ```
-or for full body:
+or standing policy:
 ```bash
-python sim/train.py --task=stompymini --num_envs=4096 --headless
+python sim/train.py --task=stompymini_standing --num_envs=4096 --headless
 ```
-
-3. Run evaluation with the following command:
+2. Run evaluation with the following command:
 ```bash
 python sim/play.py --task stompymini --sim_device cpu
-
 ```
-See [this doc](https://docs.google.com/document/d/1YZzBqIXO7oq7vIKu-BZr5ssNsi3nKtxpRPnfSnTXojA/edit?usp=sharing) for more beginner tips.
-
+3. You can also run the Mujoco sim2sim example:
+```bash
+python sim/sim2sim.py --load_model examples/standing.pt --embodiment stompypro
+```
 ### Contributing
 See the [contributing guide](CONTRIBUTING.md) to get started.
 

@@ -2,7 +2,7 @@
 """Defines the environment for training the humanoid."""
 
 from sim.envs.base.legged_robot import LeggedRobot
-from sim.resources.stompymini.joints import Robot
+from sim.resources.stompymicro.joints import Robot
 from sim.utils.terrain import HumanoidTerrain
 
 from isaacgym import gymtorch  # isort:skip
@@ -12,7 +12,7 @@ from isaacgym.torch_utils import *  # isort: skip
 import torch  # isort:skip
 
 
-class MiniFreeEnv(LeggedRobot):
+class StompyMicroEnv(LeggedRobot):
     """StompyFreeEnv is a class that represents a custom environment for a legged robot.
 
     Args:
@@ -358,7 +358,6 @@ class MiniFreeEnv(LeggedRobot):
         right_yaw_roll = joint_diff[:, [self.legs_joints["right_hip_roll"], self.legs_joints["right_hip_yaw"]]]
         yaw_roll = torch.norm(left_yaw_roll, dim=1) + torch.norm(right_yaw_roll, dim=1)
         yaw_roll = torch.clamp(yaw_roll - 0.1, 0, 50)
-
         return torch.exp(-yaw_roll * 100) - 0.01 * torch.norm(joint_diff, dim=1)
 
     def _reward_base_height(self):

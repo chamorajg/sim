@@ -29,6 +29,8 @@
 #
 # Copyright (c) 2024 Beijing RobotEra TECHNOLOGY CO.,LTD. All rights reserved.
 
+from enum import Enum
+
 from sim.envs.base.base_config import BaseConfig
 
 
@@ -113,6 +115,11 @@ class LeggedRobotCfg(BaseConfig):
         action_scale = 0.5
         # decimation: Number of control action updates @ sim DT per policy DT
         decimation = 4
+
+    class safety:
+        # safety factors
+        termination_height = 0.0
+        terminate_after_contacts_on = []
 
     class asset:
         file = ""
