@@ -13,8 +13,8 @@ class TDMPCConfigs:
     clip_actions: str = max_clip_actions
     episode_length: int = 100
     max_episode_length: int = 2400 // action_repeat
-    episode_capacity : int = episode_length
-    init_at_random_ep_len: bool = True
+    episode_capacity : int = max_episode_length
+    init_at_random_ep_len: bool = False
 
     lr: float = 1e-3
     modality: str = "state"

@@ -351,12 +351,12 @@ class Episode(object):
         self.capacity = self.cfg.episode_capacity
         if cfg.modality in {"pixels", "state"}:
             dtype = torch.float32 if cfg.modality == "state" else torch.uint8
-            self.next_obses = torch.empty(
+            self.next_obses = torch.zeros(
                 (cfg.num_envs, self.capacity, *init_obs.shape[1:]),
                 dtype=dtype,
                 device=self.device,
             )
-            self.obses = torch.empty(
+            self.obses = torch.zeros(
                 (cfg.num_envs, self.capacity, *init_obs.shape[1:]),
                 dtype=dtype,
                 device=self.device,
@@ -476,23 +476,23 @@ class Episode(object):
     def add(self, obs, action, reward, done, timeouts, success=False):
         if isinstance(obs, dict):
             for k, v in obs.items():
+                self.obses[k][:, self._idx] = v.clone().to(self.obses[k].device, dtype=self.obses[k].dtype)
+                if self._idx > 0:  
+                    self.next_obses[k][:, self._idx - 1] = self.obses[k][:, self._idx].clone()
                 if self._idx == self.capacity - 1:
-                    self.next_obses[k][:, self._idx] = v.clone().to(self.obses[k].device, dtype=self.obses[k].dtype)
-                elif self._idx < self.capacity - 1:
-                    self.obses[k][:, self._idx + 1] = v.clone().to(self.obses[k].device, dtype=self.obses[k].dtype)
-                    self.next_obses[k][:, self._idx] = self.obses[k][:, self._idx + 1].clone()
+                    self.next_obses[k][:, self._idx] = torch.zeros_like(v, device=self.obses[k].device, dtype=self.obses[k].dtype)
         else:
+            self.obses[:, self._idx + 1] = obs.clone().to(self.obses.device, dtype=self.obses.dtype)
+            if self._idx > 0:
+                self.next_obses[:, self._idx - 1] = self.obses[:, self._idx].clone()
             if self._idx == self.capacity - 1:
-                self.next_obses[:, self._idx] = obs.clone().to(self.obses.device, dtype=self.obses.dtype)
-            elif self._idx < self.capacity - 1:
-                self.obses[:, self._idx + 1] = obs.clone().to(self.obses.device, dtype=self.obses.dtype)
-                self.next_obses[:, self._idx] = self.obses[:, self._idx + 1].clone()
+                self.next_obses[:, self._idx] = torch.zeros_like(obs, device=self.obses.device, dtype=self.obses.dtype)
         self.actions[:, self._idx] = action.detach().cpu()
         self.rewards[:, self._idx] = reward.detach().cpu()
         self.dones[:, self._idx] = done.detach().cpu()
         self.masks[:, self._idx] = 1.0 - timeouts.detach().cpu().float()  # TODO
         if timeouts.any():
-            self.masks[timeouts, max(self._idx - self.cfg.horizon + 2, 0): self._idx + 1 ] = 0.0
+            self.masks[timeouts, max(self._idx - self.cfg.horizon + 1, 0): self._idx + 1 ] = 0.0
         self.cumulative_reward += reward.detach().cpu()
         self.done = done.detach().cpu()
         self.success = torch.logical_or(self.success, success.detach().cpu())

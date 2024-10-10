@@ -19,9 +19,11 @@ class TOLD(nn.Module):
         self._pi = h.mlp(cfg.latent_dim, cfg.mlp_dim, cfg.action_dim)
         self._Qs = nn.ModuleList([h.q(cfg.latent_dim + cfg.action_dim, cfg.mlp_dim) for _ in range(cfg.num_q)])
         self.apply(h.orthogonal_init)
-        for m in [self._reward, *self._Qs]:
+        for m in [*self._Qs]:
             m[-1].weight.data.fill_(0)
             m[-1].bias.data.fill_(0)
+        self._reward[-2].weight.data.fill_(0)
+        self._reward[-2].bias.data.fill_(0)
 
     def track_q_grad(self, enable=True):
         """Utility function. Enables/disables gradient tracking of Q-networks."""

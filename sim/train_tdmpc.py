@@ -113,7 +113,7 @@ def train(args: argparse.Namespace) -> None:
     for step in range(init_step, tdmpc_cfg.train_steps + tdmpc_cfg.episode_length, tdmpc_cfg.episode_length):
         if tdmpc_cfg.init_at_random_ep_len:
             env.episode_length_buf = torch.randint_like(
-                env.episode_length_buf, high=int(env.max_episode_length)
+                env.episode_length_buf, high=int(env.max_episode_length - tdmpc_cfg.horizon - 1)
             )
         if episode.full:
             episode = Episode(tdmpc_cfg, state)
