@@ -487,6 +487,11 @@ class Episode(object):
         self.masks[:, self._idx] = 1.0 - timeouts.detach().cpu().float().to(self.device)  # TODO
         if timeouts.any().item():
             self.masks[timeouts.detach().cpu().to(self.device), max(self._idx - self.cfg.horizon + 1, 0): self._idx + 1 ] = 0.0
+            # print(self.masks[timeouts.detach().cpu().to(self.device), max(self._idx - self.cfg.horizon + 1, 0): self._idx + 1 ].detach().cpu().tolist())
+        if done.any().item():
+            self.masks[done.detach().cpu().to(self.device), max(self._idx - self.cfg.horizon + 2, 0): self._idx + 1 ] = 0.0
+            # print(self.masks[done.detach().cpu().to(self.device), max(self._idx - self.cfg.horizon + 1, 0): self._idx + 1 ].detach().cpu().tolist())
+            # print(self.dones[done.detach().cpu().to(self.device), max(self._idx - self.cfg.horizon + 1, 0): self._idx + 1 ].detach().cpu().tolist())
         self.cumulative_reward += reward.detach().cpu()
         self.timeouts[:, self._idx] = timeouts.detach().cpu().to(self.device)
         self._idx += 1

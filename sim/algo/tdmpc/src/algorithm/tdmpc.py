@@ -238,8 +238,8 @@ class TDMPC:
             _z = self.model.h(self.aug(next_obses[t]))
             # Losses
             rho = self.cfg.rho**t
-            consistency_loss += mask[t] * rho * torch.sum(h.mse(z, next_z), dim=1, keepdim=True)
-            latent_loss += rho * torch.sum(h.mse(_z, next_z), dim=1, keepdim=True)
+            consistency_loss += mask[t] * rho * torch.sum(h.mse(z, next_z) + h.l1(z, next_z), dim=1, keepdim=True)
+            latent_loss += rho * torch.sum(h.mse(_z, next_z) + h.l1(_z, next_z), dim=1, keepdim=True)
             reward_loss += rho * (h.mse(reward_pred, reward[t]) + h.l1(reward_pred, reward[t]))
             for i in range(self.cfg.num_q):
                 value_loss += rho * h.mse(Qs[i], td_target)
@@ -259,7 +259,8 @@ class TDMPC:
             self.model.parameters(), self.cfg.grad_clip_norm, error_if_nonfinite=False
         )
         self.optim.step()
-        replay_buffer.update_priorities(idxs, priority_loss.clamp(max=1e4).detach())
+        masked_reward = reward * mask
+        replay_buffer.update_priorities(idxs, (masked_reward.sum(dim=0) * 1e3).clamp(min=0, max=1e4).detach())
 
         if step % self.cfg.update_freq == 0:
             # Update policy + target network

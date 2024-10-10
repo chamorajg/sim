@@ -13,10 +13,10 @@ class TDMPCConfigs:
     clip_actions: str = max_clip_actions
     episode_length: int = 100
     max_episode_length: int = 2400 // action_repeat
-    seed_steps: int = 1200
+    seed_steps: int = 200
     episode_capacity : int = max_episode_length
     init_at_random_ep_len: bool = True
-    max_buffer_size: int = int(5e6)
+    max_buffer_size: int = int(1e6)
 
     lr: float = 5e-4
     modality: str = "state"
@@ -34,10 +34,10 @@ class TDMPCConfigs:
     temperature: float = 0.5
     momentum: float = 0.1
     horizon: int = 5
-    std_schedule: str = f"linear(5.0, {min_std}, {5 * max_episode_length})"
-    horizon_schedule: str = f"linear(1, {horizon},  {5 * max_episode_length})"
+    std_schedule: str = f"linear(7.0, {min_std}, {5 * max_episode_length})"
+    horizon_schedule: str = f"linear(1, {horizon},  {2 * max_episode_length})"
 
-    batch_size: int = 8192
+    batch_size: int = 2048
     reward_coef: float = 1
     value_coef: float = 0.75
     consistency_coef: float = 2

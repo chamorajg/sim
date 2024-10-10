@@ -122,11 +122,11 @@ def train(args: argparse.Namespace) -> None:
             current_state = state.clone()
             total_rewards, total_dones, total_timeouts = [], [], []
             for _ in range(tdmpc_cfg.action_repeat):
-                state, privileged_obs, rewards, dones, infos = env.step(actions)
-                next_state = state.clone()
+                state, _, rewards, dones, infos = env.step(actions)
                 total_rewards.append(rewards)
                 total_dones.append(dones)
                 total_timeouts.append(infos["time_outs"])
+            next_state = state.clone()
             episode += (
                 current_state,
                 next_state,
