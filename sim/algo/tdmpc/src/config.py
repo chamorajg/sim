@@ -18,11 +18,11 @@ class TDMPCConfigs:
 
     lr: float = 1e-3
     modality: str = "state"
-    enc_dim: int = 512
-    mlp_dim = [512, 256]
-    dynamics_mlp_dim = [512, 256]
-    reward_mlp_dim = [512, 256]
-    latent_dim: int = 100
+    enc_dim: int = 256
+    mlp_dim = [256, 256]
+    dynamics_mlp_dim = [256, 256]
+    reward_mlp_dim = [256, 256]
+    latent_dim: int = 50
 
     iterations: int = 12
     num_samples: int = 512
@@ -36,11 +36,11 @@ class TDMPCConfigs:
     horizon_schedule: str = f"linear(1, {horizon},  {5 * max_episode_length})"
 
     batch_size: int = 8192
-    max_buffer_size: int = int(5e6)
+    max_buffer_size: int = int(1e6)
     reward_coef: float = 1
     value_coef: float = 0.75
     consistency_coef: float = 2
-    rho: float = 0.75
+    rho: float = 0.95
     kappa: float = 0.1
     per_alpha: float = 0.6
     per_beta: float = 0.4

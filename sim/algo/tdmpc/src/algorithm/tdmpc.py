@@ -14,8 +14,8 @@ class TOLD(nn.Module):
         super().__init__()
         self.cfg = cfg
         self._encoder = h.enc(cfg)
-        self._dynamics = h.mlp(cfg.latent_dim + cfg.action_dim, cfg.mlp_dim, cfg.latent_dim, last_layer_act = nn.Tanh())
-        self._reward = h.mlp(cfg.latent_dim + cfg.action_dim, cfg.mlp_dim, 1, last_layer_act = nn.ELU())
+        self._dynamics = h.mlp(cfg.latent_dim + cfg.action_dim, cfg.dynamics_mlp_dim, cfg.latent_dim, last_layer_act = nn.Tanh())
+        self._reward = h.mlp(cfg.latent_dim + cfg.action_dim, cfg.reward_mlp_dim, 1, last_layer_act = nn.ELU())
         self._pi = h.mlp(cfg.latent_dim, cfg.mlp_dim, cfg.action_dim)
         self._Qs = nn.ModuleList([h.q(cfg.latent_dim + cfg.action_dim, cfg.mlp_dim) for _ in range(cfg.num_q)])
         self.apply(h.orthogonal_init)
