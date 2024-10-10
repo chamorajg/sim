@@ -55,6 +55,8 @@ class VideoRecorder:
         env.gym.step_graphics(env.sim)
         env.gym.render_all_camera_sensors(env.sim)
         img = env.gym.get_camera_image(env.sim, env.envs[0], h1, gymapi.IMAGE_COLOR)
+        img = np.reshape(img, (1080, 1920, 4))
+        print(img.shape)
         img = cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
         img = cv2.resize(img, (480, 360))
         # Overlay reward if provided
@@ -62,11 +64,11 @@ class VideoRecorder:
             cv2.putText(
                 img,
                 f"Reward: {reward:.2f}",
-                (10, 30),
+                (5, 5),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 1,
                 (0, 255, 0),
-                2,
+                1,
                 cv2.LINE_AA,
             )
         self.frames.append(img)
@@ -90,7 +92,7 @@ def evaluate(test_env, agent, h1, step, video, action_repeat=1):
     dones, ep_reward, t = torch.tensor([False] * test_env.num_envs), torch.tensor([0.0] * test_env.num_envs), 0
     if video:
         video.init(test_env, h1, enabled=True)
-    for i in tqdm(range(int(200 // action_repeat))):
+    for i in tqdm(range(int(20 // action_repeat))):
         actions = agent.plan(state, eval_mode=True, step=step, t0=t == 0)
         for _ in range(action_repeat):
             state, _, rewards, dones, infos = test_env.step(actions)

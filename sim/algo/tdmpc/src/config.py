@@ -72,7 +72,7 @@ class TDMPCConfigs:
 class EvalTDMPCConfigs(TDMPCConfigs):
     seed: int = 42
     task: str = "walk"
-    exp_name: str = "dora"
+    exp_name: str = "stompypro"
     device: str = "cuda:0"
     horizon: int = 5
     min_std: float = 2.0
