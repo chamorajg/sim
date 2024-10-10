@@ -605,7 +605,7 @@ class ReplayBuffer:
         idxs = torch.arange(self.idx, self.idx + self.cfg.num_envs * episode.capacity) % self.capacity
         self._sampling_idx = (self.idx + self.cfg.num_envs * episode.capacity) % self.capacity
         mask_copy = episode.masks.clone()
-        mask_copy[:, episode._idx - self.cfg.horizon + 1:] = 0.0
+        mask_copy[:, episode._idx - self.cfg.horizon:] = 0.0
         if self.cfg.modality in {"pixels", "state"}:
             self._obs[idxs] = (
                 episode.obses.flatten(0, 1) if self.cfg.modality == "state" else episode.obses[:, -3:].flatten(0, 1)
