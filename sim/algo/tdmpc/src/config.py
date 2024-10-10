@@ -17,7 +17,7 @@ class TDMPCConfigs:
     episode_capacity : int = max_episode_length
     init_at_random_ep_len: bool = True
 
-    lr: float = 1e-3
+    lr: float = 5e-4
     modality: str = "state"
     enc_dim: int = 256
     mlp_dim = [256, 256]

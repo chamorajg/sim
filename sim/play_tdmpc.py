@@ -55,8 +55,8 @@ class VideoRecorder:
         env.gym.step_graphics(env.sim)
         env.gym.render_all_camera_sensors(env.sim)
         img = env.gym.get_camera_image(env.sim, env.envs[0], h1, gymapi.IMAGE_COLOR)
-        img = np.reshape(img, (360, 480, 4))
         img = cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
+        img = cv2.resize(img, (480, 360))
         # Overlay reward if provided
         if reward is not None:
             cv2.putText(
@@ -86,9 +86,7 @@ class VideoRecorder:
 def evaluate(test_env, agent, h1, step, video, action_repeat=1):
     """Evaluate a trained agent and optionally save a video."""
     episode_rewards = []
-    obs, privileged_obs = test_env.reset()
-    critic_obs = privileged_obs if privileged_obs is not None else obs
-    state = torch.cat([obs, critic_obs], dim=-1) if privileged_obs is not None else obs
+    state, _ = test_env.reset()
     dones, ep_reward, t = torch.tensor([False] * test_env.num_envs), torch.tensor([0.0] * test_env.num_envs), 0
     if video:
         video.init(test_env, h1, enabled=True)
@@ -113,9 +111,9 @@ def play(args: argparse.Namespace) -> None:
     env_cfg, _ = task_registry.get_cfgs(name=args.task)
     env, _ = task_registry.make_env(name=args.task, args=args)
 
-    fp = ""
+    fp = "/home/kasm-user/sim/logs/2024-10-10_02-03-19_walk_state_dora/models/tdmpc_policy_30.pt"
     config = torch.load(fp)["config"]
-    tdmpc_cfg = EvalTDMPCConfigs()
+    tdmpc_cfg = EvalTDMPCConfigs(**config)
     env.set_camera(env_cfg.viewer.pos, env_cfg.viewer.lookat)
 
     camera_properties = gymapi.CameraProperties()
@@ -137,10 +135,9 @@ def play(args: argparse.Namespace) -> None:
 
     state, _ = env.reset()
 
-    tdmpc_cfg.obs_shape = [state.shape[0]]
+    tdmpc_cfg.obs_shape = state.shape[1:]
     tdmpc_cfg.action_shape = env.num_actions
     tdmpc_cfg.action_dim = env.num_actions
-    tdmpc_cfg.episode_length = 100  # int(env.max_episode_length // tdmpc_cfg.action_repeat)
     tdmpc_cfg.num_envs = env.num_envs
 
     L = logger.Logger(work_dir, tdmpc_cfg)
