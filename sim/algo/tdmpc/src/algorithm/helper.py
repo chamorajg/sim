@@ -488,7 +488,7 @@ class Episode(object):
         if timeouts.any().item():
             self.masks[timeouts.detach().cpu().to(self.device), max(self._idx - self.cfg.horizon + 1, 0): self._idx + 1 ] = 0.0
         self.cumulative_reward += reward.detach().cpu()
-        self.timeouts[:, self._idx] = torch.tensor(timeouts).to(self.device)
+        self.timeouts[:, self._idx] = timeouts.detach().cpu().to(self.device)
         self._idx += 1
 
 

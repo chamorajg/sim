@@ -750,7 +750,6 @@ class LeggedRobot(BaseTask):
             self.feet_indices[i] = self.gym.find_actor_rigid_body_handle(
                 self.envs[0], self.actor_handles[0], feet_names[i]
             )
-        print("feet", self.feet_indices)
         print(f"Processed body properties for env {i}:")
         for j, prop in enumerate(body_props):
             print(f"  Body {j} mass: {prop.mass}")
