@@ -16,6 +16,7 @@ class TDMPCConfigs:
     seed_steps: int = 1200
     episode_capacity : int = max_episode_length
     init_at_random_ep_len: bool = True
+    max_buffer_size: int = int(5e6)
 
     lr: float = 5e-4
     modality: str = "state"
@@ -37,7 +38,6 @@ class TDMPCConfigs:
     horizon_schedule: str = f"linear(1, {horizon},  {5 * max_episode_length})"
 
     batch_size: int = 8192
-    max_buffer_size: int = int(1e6)
     reward_coef: float = 1
     value_coef: float = 0.75
     consistency_coef: float = 2

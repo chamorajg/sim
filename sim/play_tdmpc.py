@@ -112,7 +112,7 @@ def play(args: argparse.Namespace) -> None:
     env_cfg, _ = task_registry.get_cfgs(name=args.task)
     env, _ = task_registry.make_env(name=args.task, args=args)
 
-    fp = "/home/kasm-user/sim/logs/2024-10-10_02-03-19_walk_state_dora/models/tdmpc_policy_100.pt"
+    fp = "/home/kasm-user/sim/logs/2024-10-10_02-03-19_walk_state_dora/models/tdmpc_policy_600.pt"
     config = torch.load(fp, weights_only=True)["config"]
     tdmpc_cfg = EvalTDMPCConfigs()
     env.set_camera(env_cfg.viewer.pos, env_cfg.viewer.lookat)
