@@ -260,6 +260,37 @@ class StompyProStandingCfg(StompyProCfg):
             dof_acc = -1e-7
             collision = -1.0
 
+class StompyProWalkingCfg(StompyProCfg):
+    """Configuration class for the Stompy Pro humanoid robot."""
+
+    # a - normal
+    # b - negate target_join_pos_scale (-0.14)
+    class rewards:
+        # quite important to keep it right
+        base_height_target = 0.63
+        min_dist = 0.2
+        max_dist = 0.4
+        # put some settings here for LLM parameter tuning
+        target_joint_pos_scale = 0.14  # rad
+        target_feet_height = 0.05  # m
+        cycle_time = 0.5  # sec
+        # if true negative total rewards are clipped at zero (avoids early termination problems)
+        only_positive_rewards = True
+        # tracking reward = exp(error*sigma)
+        tracking_sigma = 5
+        max_contact_force = 500  # forces above this value are penalized
+
+        class scales:
+            # base pos
+            tracking_lin_vel = 2
+            tracking_ang_vel = 1.1  # 1.1
+            vel_mismatch_exp = 0.5  # lin_z; ang x,y
+            track_vel_hard = 0.5  # 0.5
+            # energy
+            orientation = 1.0
+            action_smoothness = -0.002
+            torques = -1e-5
+
 
 class StompyProCfgPPO(LeggedRobotCfgPPO):
     seed = 5

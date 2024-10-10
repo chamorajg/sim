@@ -100,7 +100,7 @@ def evaluate(test_env, agent, h1, step, video, action_repeat=1):
             ep_reward += rewards.cpu()
             t += 1
             if video:
-                video.record(test_env, h1)
+                video.record(test_env, h1, rewards.mean().item())
         state = torch.cat([obs, critic_obs], dim=-1) if privileged_obs is not None else obs
     episode_rewards.append(ep_reward)
     if video:
