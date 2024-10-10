@@ -348,7 +348,7 @@ class Episode(object):
     def __init__(self, cfg, init_obs):
         self.cfg = cfg
         self.device = torch.device(cfg.buffer_device)
-        self.capacity = int(cfg.max_episode_length // cfg.action_repeat)
+        self.capacity = self.cfg.episode_capacity
         if cfg.modality in {"pixels", "state"}:
             dtype = torch.float32 if cfg.modality == "state" else torch.uint8
             self.next_obses = torch.empty(
@@ -462,6 +462,7 @@ class Episode(object):
 
     @property
     def full(self):
+        assert (self.next_obses[:, :-1] - self.obses[:, 1:]).mean() <= 1e-5
         return len(self) == self.capacity
 
     @property

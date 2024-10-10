@@ -7,11 +7,14 @@ class TDMPCConfigs:
     task: str = "walk"
     exp_name: str = "dora"
     device: str = "cuda:0"
+    action_repeat: int = 2
     num_envs: int = 10
     max_clip_actions: float = 18.0
     clip_actions: str = max_clip_actions
     episode_length: int = 100
-    max_episode_length: int = 1000
+    max_episode_length: int = 2400 // action_repeat
+    episode_capacity : int = episode_length
+    init_at_random_ep_len: bool = True
 
     lr: float = 1e-3
     modality: str = "state"
@@ -75,3 +78,4 @@ class EvalTDMPCConfigs(TDMPCConfigs):
     device: str = "cuda:0"
     horizon: int = 5
     min_std: float = 2.0
+    init_at_random_ep_len: bool = False
