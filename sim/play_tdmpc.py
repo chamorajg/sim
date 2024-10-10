@@ -5,6 +5,7 @@ import isaacgym
 import os
 import cv2
 import torch
+import imageio
 from sim.envs import task_registry
 from sim.utils.helpers import get_args
 from sim.algo.tdmpc.src import logger
@@ -17,6 +18,7 @@ from pathlib import Path
 import random
 from datetime import datetime
 from tqdm import tqdm
+
 
 torch.backends.cudnn.benchmark = True
 __LOGS__ = "logs"
@@ -36,32 +38,49 @@ class VideoRecorder:
         self.save_dir = (root_dir / "eval_video") if root_dir else None
         self.render_size = render_size
         self.fps = fps
-        self.frames = []
         self.enabled = False
-        fourcc = cv2.VideoWriter_fourcc(*"MP4V")  # type: ignore[attr-defined]
         logger.make_dir(self.save_dir)
         now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         # Creates a directory to store videos.
-        dir = os.path.join(self.save_dir, now + ".mp4")
-        self.video = cv2.VideoWriter(dir, fourcc, float(fps), (1920, 1080))
+        self.dir = os.path.join(self.save_dir, now + ".gif")
+        self.frames = []
 
     def init(self, env, h1, enabled=True):
         self.frames = []
         self.enabled = self.save_dir and enabled
         self.record(env, h1)
 
-    def record(self, env, h1):
+    def record(self, env, h1, reward: float = None):
         env.gym.fetch_results(env.sim, True)
         env.gym.step_graphics(env.sim)
         env.gym.render_all_camera_sensors(env.sim)
         img = env.gym.get_camera_image(env.sim, env.envs[0], h1, gymapi.IMAGE_COLOR)
         img = np.reshape(img, (360, 480, 4))
-        img = cv2.cvtColor(img, cv2.COLOR_RGBA2BGR)
+        img = cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
+        # Overlay reward if provided
+        if reward is not None:
+            cv2.putText(
+                img,
+                f"Reward: {reward:.2f}",
+                (10, 30),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1,
+                (0, 255, 0),
+                2,
+                cv2.LINE_AA,
+            )
+        self.frames.append(img)
 
     def save(
         self,
     ):
-        imageio.mimsave()
+        imageio.mimsave(
+                self.dir,
+                self.frames,
+                format='GIF',
+                fps=self.fps,
+                loop=0  # 0 for infinite loop
+            )
 
 
 def evaluate(test_env, agent, h1, step, video, action_repeat=1):
