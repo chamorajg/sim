@@ -13,6 +13,7 @@ class TDMPCConfigs:
     clip_actions: str = max_clip_actions
     episode_length: int = 100
     max_episode_length: int = 2400 // action_repeat
+    seed_steps: int = 1200
     episode_capacity : int = max_episode_length
     init_at_random_ep_len: bool = True
 
@@ -45,7 +46,6 @@ class TDMPCConfigs:
     per_alpha: float = 0.6
     per_beta: float = 0.4
     grad_clip_norm: float = 50
-    seed_steps: int = 1200
     update_freq: int = 3
     tau: int = 0.05
 
