@@ -95,13 +95,11 @@ def evaluate(test_env, agent, h1, step, video, action_repeat=1):
     for i in tqdm(range(int(200 // action_repeat))):
         actions = agent.plan(state, eval_mode=True, step=step, t0=t == 0)
         for _ in range(action_repeat):
-            obs, privileged_obs, rewards, dones, infos = test_env.step(actions)
-            critic_obs = privileged_obs if privileged_obs is not None else obs
+            state, _, rewards, dones, infos = test_env.step(actions)
             ep_reward += rewards.cpu()
             t += 1
             if video:
                 video.record(test_env, h1, rewards.mean().item())
-        state = torch.cat([obs, critic_obs], dim=-1) if privileged_obs is not None else obs
     episode_rewards.append(ep_reward)
     if video:
         video.save()
@@ -137,9 +135,7 @@ def play(args: argparse.Namespace) -> None:
         Path().cwd() / __LOGS__ / f"{tdmpc_cfg.task}_{tdmpc_cfg.modality}_{tdmpc_cfg.exp_name}_{str(tdmpc_cfg.seed)}"
     )
 
-    obs, privileged_obs = env.reset()
-    critic_obs = privileged_obs if privileged_obs is not None else obs
-    state = torch.cat([obs, critic_obs], dim=-1)[0] if privileged_obs is not None else obs[0]
+    state, _ = env.reset()
 
     tdmpc_cfg.obs_shape = [state.shape[0]]
     tdmpc_cfg.action_shape = env.num_actions
