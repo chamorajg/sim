@@ -56,7 +56,6 @@ class VideoRecorder:
         env.gym.render_all_camera_sensors(env.sim)
         img = env.gym.get_camera_image(env.sim, env.envs[0], h1, gymapi.IMAGE_COLOR)
         img = np.reshape(img, (1080, 1920, 4))
-        print(img.shape)
         img = cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
         img = cv2.resize(img, (480, 360))
         # Overlay reward if provided
@@ -64,9 +63,9 @@ class VideoRecorder:
             cv2.putText(
                 img,
                 f"Reward: {reward:.2f}",
-                (5, 5),
+                (15, 15),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                1,
+                0.5,
                 (0, 255, 0),
                 1,
                 cv2.LINE_AA,
@@ -115,7 +114,7 @@ def play(args: argparse.Namespace) -> None:
 
     fp = "/home/kasm-user/sim/logs/2024-10-10_02-03-19_walk_state_dora/models/tdmpc_policy_30.pt"
     config = torch.load(fp)["config"]
-    tdmpc_cfg = EvalTDMPCConfigs(**config)
+    tdmpc_cfg = EvalTDMPCConfigs()
     env.set_camera(env_cfg.viewer.pos, env_cfg.viewer.lookat)
 
     camera_properties = gymapi.CameraProperties()
