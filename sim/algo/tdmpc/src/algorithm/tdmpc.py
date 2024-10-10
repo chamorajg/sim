@@ -87,7 +87,7 @@ class TDMPC:
 
     def load(self, fp):
         """Load a saved state dict from filepath into current agent."""
-        d = torch.load(fp)
+        d = torch.load(fp, weights_only=True)
         self.model.load_state_dict(d["model"])
         self.model_target.load_state_dict(d["model_target"])
         return d["step"], d["env_step"]
