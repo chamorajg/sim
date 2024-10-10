@@ -518,7 +518,7 @@ class ReplayBuffer:
             self.capacity = max(dataset["rewards"].shape[0], cfg.max_offline_buffer_size)
             print("Offline dataset size: ", dataset["rewards"].shape[0])
         else:
-            self.capacity = max(cfg.train_steps, cfg.max_buffer_size)
+            self.capacity = cfg.max_buffer_size
 
         print("Maximum capacity of the buffer is: ", self.capacity)
 
@@ -554,7 +554,6 @@ class ReplayBuffer:
         self._done = torch.empty((self.capacity,), dtype=torch.bool, device=self.buffer_device)
         self._success = torch.empty((self.capacity,), dtype=torch.bool, device=self.buffer_device)
         self._priorities = torch.ones((self.capacity,), dtype=torch.float32, device=self.buffer_device)
-        self.ep_len = int(self.cfg.max_episode_length // self.cfg.action_repeat)
         self._eps = 1e-6
         self._full = False
         self.idx = 0
@@ -602,8 +601,8 @@ class ReplayBuffer:
         return self
 
     def add(self, episode: Episode):
-        idxs = torch.arange(self.idx, self.idx + self.cfg.num_envs * self.ep_len) % self.capacity
-        self._sampling_idx = (self.idx + self.cfg.num_envs * self.ep_len) % self.capacity
+        idxs = torch.arange(self.idx, self.idx + self.cfg.num_envs * episode.capacity) % self.capacity
+        self._sampling_idx = (self.idx + self.cfg.num_envs * episode.capacity) % self.capacity
         mask_copy = episode.masks.clone()
         mask_copy[:, episode._idx - self.cfg.horizon + 1:] = 0.0
         if self.cfg.modality in {"pixels", "state"}:
@@ -635,15 +634,15 @@ class ReplayBuffer:
             max_priority = self._priorities.max().to(self.device).item()
         else:
             max_priority = 1.0 if self.idx == 0 else self._priorities[: self.idx].max().to(self.device).item()
-        mask = torch.arange(self.ep_len) > self.ep_len - self.cfg.horizon
+        mask = torch.arange(episode.capacity) > episode.capacity - self.cfg.horizon
         mask = torch.cat([mask] * self.cfg.num_envs)
-        new_priorities = torch.full((self.ep_len * self.cfg.num_envs,), max_priority, device=self.buffer_device)
+        new_priorities = torch.full(( episode.capacity * self.cfg.num_envs,), max_priority, device=self.buffer_device)
         new_priorities[mask] = 0
         new_priorities = new_priorities * self._mask[idxs]
         self._priorities[idxs] = new_priorities
-        self._full = self._full or (self.idx + self.ep_len * self.cfg.num_envs > self.capacity)
+        self._full = self._full or (self.idx + episode.capacity * self.cfg.num_envs > self.capacity)
         if episode.full:
-            self.idx = (self.idx + self.ep_len * self.cfg.num_envs) % self.capacity
+            self.idx = (self.idx + episode.capacity * self.cfg.num_envs) % self.capacity
 
     def _set_bs(self, bs):
         self.batch_size = bs

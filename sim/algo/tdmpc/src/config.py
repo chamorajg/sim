@@ -8,8 +8,8 @@ class TDMPCConfigs:
     exp_name: str = "dora"
     device: str = "cuda:0"
     num_envs: int = 10
-    max_clip_actions: float = 1.0
-    clip_actions: str = f"linear(1, {max_clip_actions}, 100000)"
+    max_clip_actions: float = 18.0
+    clip_actions: str = max_clip_actions
     episode_length: int = 100
     max_episode_length: int = 1000
 
