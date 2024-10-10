@@ -15,7 +15,7 @@ class StompyProCfg(LeggedRobotCfg):
 
     class env(LeggedRobotCfg.env):
         # change the observation dim
-        frame_stack = 15
+        frame_stack = 3
         c_frame_stack = 3
         num_single_obs = 11 + NUM_JOINTS * 3
         num_observations = int(frame_stack * num_single_obs)
@@ -282,12 +282,12 @@ class StompyProWalkingCfg(StompyProCfg):
 
         class scales:
             # base pos
-            tracking_lin_vel = 2
-            tracking_ang_vel = 1.1  # 1.1
-            vel_mismatch_exp = 0.5  # lin_z; ang x,y
-            track_vel_hard = 0.5  # 0.5
+            tracking_lin_vel = 5.0
+            tracking_ang_vel = 2.5  # 1.1
+            vel_mismatch_exp = 1.0  # lin_z; ang x,y
+            track_vel_hard = 1.0  # 0.5
             # energy
-            orientation = 1.0
+            orientation = 1.5
             action_smoothness = -0.002
             torques = -1e-5
 

@@ -397,7 +397,7 @@ class Episode(object):
             dtype=torch.bool,
             device=self.device,
         )
-        self.successes = torch.empty(
+        self.timeouts = torch.empty(
             (
                 cfg.num_envs,
                 self.capacity,
@@ -414,8 +414,6 @@ class Episode(object):
             device=self.device,
         )
         self.cumulative_reward = torch.tensor([0.0] * cfg.num_envs)
-        self.done = torch.tensor([False] * cfg.num_envs)
-        self.success = torch.tensor([False] * cfg.num_envs)
         self._idx = 0
 
     def __len__(self):
@@ -462,7 +460,6 @@ class Episode(object):
 
     @property
     def full(self):
-        assert (self.next_obses[:, :-1] - self.obses[:, 1:]).mean() <= 1e-5
         return len(self) == self.capacity
 
     @property
@@ -473,30 +470,25 @@ class Episode(object):
         self.add(*transition)
         return self
 
-    def add(self, obs, action, reward, done, timeouts, success=False):
+    def add(self, obs, next_obs, action, reward, done, timeouts, success=False):
         if isinstance(obs, dict):
             for k, v in obs.items():
                 self.obses[k][:, self._idx] = v.clone().to(self.obses[k].device, dtype=self.obses[k].dtype)
-                if self._idx > 0:  
-                    self.next_obses[k][:, self._idx - 1] = self.obses[k][:, self._idx].clone()
-                if self._idx == self.capacity - 1:
-                    self.next_obses[k][:, self._idx] = torch.zeros_like(v, device=self.obses[k].device, dtype=self.obses[k].dtype)
+            for k, v in next_obs.items():
+                self.next_obses[k][:, self._idx] = v.clone().to(self.obses[k].device, dtype=self.obses[k].dtype)
         else:
-            self.obses[:, self._idx + 1] = obs.clone().to(self.obses.device, dtype=self.obses.dtype)
-            if self._idx > 0:
-                self.next_obses[:, self._idx - 1] = self.obses[:, self._idx].clone()
-            if self._idx == self.capacity - 1:
-                self.next_obses[:, self._idx] = torch.zeros_like(obs, device=self.obses.device, dtype=self.obses.dtype)
-        self.actions[:, self._idx] = action.detach().cpu()
-        self.rewards[:, self._idx] = reward.detach().cpu()
-        self.dones[:, self._idx] = done.detach().cpu()
-        self.masks[:, self._idx] = 1.0 - timeouts.detach().cpu().float()  # TODO
-        if timeouts.any():
-            self.masks[timeouts, max(self._idx - self.cfg.horizon + 1, 0): self._idx + 1 ] = 0.0
+            self.obses[:, self._idx] = obs.clone().to(self.obses.device, dtype=self.obses.dtype)
+            self.next_obses[:, self._idx] = next_obs.clone().to(self.obses.device, dtype=self.obses.dtype)
+        if self._idx > 0:
+            assert (self.obses[:, self._idx] - self.next_obses[:, self._idx - 1]).mean().item() <= 1e-3, print(f"{timeouts} \n {self.obses[:, self._idx]} \n {self.next_obses[:, self._idx - 1]}")
+        self.actions[:, self._idx] = action.detach().cpu().to(self.device)
+        self.rewards[:, self._idx] = reward.detach().cpu().to(self.device)
+        self.dones[:, self._idx] = done.detach().cpu().to(self.device)
+        self.masks[:, self._idx] = 1.0 - timeouts.detach().cpu().float().to(self.device)  # TODO
+        if timeouts.any().item():
+            self.masks[timeouts.detach().cpu().to(self.device), max(self._idx - self.cfg.horizon + 1, 0): self._idx + 1 ] = 0.0
         self.cumulative_reward += reward.detach().cpu()
-        self.done = done.detach().cpu()
-        self.success = torch.logical_or(self.success, success.detach().cpu())
-        self.successes[:, self._idx] = torch.tensor(self.success).to(self.device)
+        self.timeouts[:, self._idx] = torch.tensor(timeouts).to(self.device)
         self._idx += 1
 
 
@@ -553,7 +545,7 @@ class ReplayBuffer:
         self._reward = torch.empty((self.capacity,), dtype=torch.float32, device=self.buffer_device)
         self._mask = torch.empty((self.capacity,), dtype=torch.float32, device=self.buffer_device)
         self._done = torch.empty((self.capacity,), dtype=torch.bool, device=self.buffer_device)
-        self._success = torch.empty((self.capacity,), dtype=torch.bool, device=self.buffer_device)
+        self._timeouts = torch.empty((self.capacity,), dtype=torch.bool, device=self.buffer_device)
         self._priorities = torch.ones((self.capacity,), dtype=torch.float32, device=self.buffer_device)
         self._eps = 1e-6
         self._full = False
@@ -605,7 +597,7 @@ class ReplayBuffer:
         idxs = torch.arange(self.idx, self.idx + self.cfg.num_envs * episode.capacity) % self.capacity
         self._sampling_idx = (self.idx + self.cfg.num_envs * episode.capacity) % self.capacity
         mask_copy = episode.masks.clone()
-        mask_copy[:, episode._idx - self.cfg.horizon:] = 0.0
+        mask_copy[:, episode._idx - self.cfg.horizon + 1:] = 0.0
         if self.cfg.modality in {"pixels", "state"}:
             self._obs[idxs] = (
                 episode.obses.flatten(0, 1) if self.cfg.modality == "state" else episode.obses[:, -3:].flatten(0, 1)
@@ -630,7 +622,7 @@ class ReplayBuffer:
         self._reward[idxs] = episode.rewards.flatten(0, 1)
         self._mask[idxs] = mask_copy.flatten(0, 1)
         self._done[idxs] = episode.dones.flatten(0, 1)
-        self._success[idxs] = episode.successes.flatten(0, 1)
+        self._timeouts[idxs] = episode.timeouts.flatten(0, 1)
         if self._full:
             max_priority = self._priorities.max().to(self.device).item()
         else:

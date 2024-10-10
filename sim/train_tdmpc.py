@@ -81,15 +81,15 @@ def train(args: argparse.Namespace) -> None:
     now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     work_dir = Path().cwd() / __LOGS__ / f"{now}_{tdmpc_cfg.task}_{tdmpc_cfg.modality}_{tdmpc_cfg.exp_name}"
 
-    obs, privileged_obs = env.reset()
-    critic_obs = privileged_obs if privileged_obs is not None else obs
-    state = torch.cat([obs, critic_obs], dim=-1) if privileged_obs is not None else obs
+    state, _ = env.reset()
 
+    print(f"Environment max episode length : {env.max_episode_length}")
     tdmpc_cfg.obs_shape = state.shape[1:]
     tdmpc_cfg.action_shape = env.num_actions
     tdmpc_cfg.action_dim = env.num_actions
     tdmpc_cfg.num_envs = env.num_envs
     tdmpc_cfg.max_episode_length = int(env.max_episode_length)
+    tdmpc_cfg.episode_capacity = int(env.max_episode_length) // tdmpc_cfg.action_repeat
     tdmpc_cfg.max_clip_actions = env.cfg.normalization.clip_actions
     tdmpc_cfg.clip_actions = f"{env.cfg.normalization.clip_actions}"
 
@@ -113,23 +113,23 @@ def train(args: argparse.Namespace) -> None:
     for step in range(init_step, tdmpc_cfg.train_steps + tdmpc_cfg.episode_length, tdmpc_cfg.episode_length):
         if tdmpc_cfg.init_at_random_ep_len:
             env.episode_length_buf = torch.randint_like(
-                env.episode_length_buf, high=int(env.max_episode_length - tdmpc_cfg.horizon - 1)
+                env.episode_length_buf, low=1000, high=int(env.max_episode_length - (tdmpc_cfg.horizon * tdmpc_cfg.action_repeat))
             )
         if episode.full:
             episode = Episode(tdmpc_cfg, state)
         for i in range(tdmpc_cfg.episode_length):
             actions = agent.plan(state, t0=episode.first, eval_mode=False, step=step)
-            original_state = state.clone()
+            current_state = state.clone()
             total_rewards, total_dones, total_timeouts = [], [], []
             for _ in range(tdmpc_cfg.action_repeat):
-                obs, privileged_obs, rewards, dones, infos = env.step(actions)
-                critic_obs = privileged_obs if privileged_obs is not None else obs
-                state = torch.cat([obs, critic_obs], dim=-1) if privileged_obs is not None else obs
+                state, privileged_obs, rewards, dones, infos = env.step(actions)
+                next_state = state.clone()
                 total_rewards.append(rewards)
                 total_dones.append(dones)
                 total_timeouts.append(infos["time_outs"])
             episode += (
-                original_state,
+                current_state,
+                next_state,
                 actions,
                 torch.stack(total_rewards).sum(dim=0),
                 torch.stack(total_dones).any(dim=0),

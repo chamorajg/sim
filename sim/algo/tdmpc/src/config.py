@@ -14,7 +14,7 @@ class TDMPCConfigs:
     episode_length: int = 100
     max_episode_length: int = 2400 // action_repeat
     episode_capacity : int = max_episode_length
-    init_at_random_ep_len: bool = False
+    init_at_random_ep_len: bool = True
 
     lr: float = 1e-3
     modality: str = "state"
@@ -53,8 +53,6 @@ class TDMPCConfigs:
     buffer_device: str = "cpu"
     train_steps: int = int(1e6)
     num_q: int = 2
-
-    action_repeat: int = 2
 
     save_model: bool = True
     save_video: bool = False
