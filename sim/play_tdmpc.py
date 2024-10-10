@@ -91,7 +91,7 @@ def evaluate(test_env, agent, h1, step, video, action_repeat=1):
     dones, ep_reward, t = torch.tensor([False] * test_env.num_envs), torch.tensor([0.0] * test_env.num_envs), 0
     if video:
         video.init(test_env, h1, enabled=True)
-    for i in tqdm(range(int(20 // action_repeat))):
+    for i in tqdm(range(int(200 // action_repeat))):
         actions = agent.plan(state, eval_mode=True, step=step, t0=t == 0)
         for _ in range(action_repeat):
             state, _, rewards, dones, infos = test_env.step(actions)
@@ -112,7 +112,7 @@ def play(args: argparse.Namespace) -> None:
     env_cfg, _ = task_registry.get_cfgs(name=args.task)
     env, _ = task_registry.make_env(name=args.task, args=args)
 
-    fp = "/home/kasm-user/sim/logs/2024-10-10_02-03-19_walk_state_dora/models/tdmpc_policy_30.pt"
+    fp = "/home/kasm-user/sim/logs/2024-10-10_02-03-19_walk_state_dora/models/tdmpc_policy_70.pt"
     config = torch.load(fp)["config"]
     tdmpc_cfg = EvalTDMPCConfigs()
     env.set_camera(env_cfg.viewer.pos, env_cfg.viewer.lookat)
