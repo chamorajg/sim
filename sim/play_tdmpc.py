@@ -112,11 +112,10 @@ def play(args: argparse.Namespace) -> None:
     env_cfg, _ = task_registry.get_cfgs(name=args.task)
     env, _ = task_registry.make_env(name=args.task, args=args)
 
-    fp = ""
+    fp = "/home/kasm-user/sim/logs/2024-10-11_00-30-21_walk_state_dora/models/tdmpc_policy_1010.pt"
     config = torch.load(fp, weights_only=True)["config"]
     tdmpc_cfg = EvalTDMPCConfigs()
     env.set_camera(env_cfg.viewer.pos, env_cfg.viewer.lookat)
-
     camera_properties = gymapi.CameraProperties()
     camera_properties.width = 1920
     camera_properties.height = 1080

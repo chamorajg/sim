@@ -89,7 +89,6 @@ def train(args: argparse.Namespace) -> None:
     tdmpc_cfg.action_dim = env.num_actions
     tdmpc_cfg.num_envs = env.num_envs
     tdmpc_cfg.max_episode_length = int(env.max_episode_length)
-    tdmpc_cfg.episode_capacity = int(env.max_episode_length) // tdmpc_cfg.action_repeat
     tdmpc_cfg.max_clip_actions = env.cfg.normalization.clip_actions
     tdmpc_cfg.clip_actions = f"{env.cfg.normalization.clip_actions}"
 

@@ -45,7 +45,7 @@ class TOLD(nn.Module):
         if std > 0:
             std = torch.ones_like(mu) * std
             return h.TruncatedNormal(mu, std, low=-self.cfg.max_clip_actions, high=self.cfg.max_clip_actions).sample(
-                clip=5.0
+                clip=self.cfg.max_clip_actions * 0.3
             )
         return mu
 

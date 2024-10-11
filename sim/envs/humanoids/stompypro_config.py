@@ -214,7 +214,7 @@ class StompyProCfg(LeggedRobotCfg):
             lin_vel = 2.0
             ang_vel = 1.0
             dof_pos = 1.0
-            dof_vel = 0.05
+            dof_vel = 1.0
             quat = 1.0
             height_measurements = 5.0
 
@@ -282,7 +282,7 @@ class StompyProWalkingCfg(StompyProCfg):
 
         class scales:
             # base pos
-            tracking_lin_vel = 5.0
+            tracking_lin_vel = 10.0
             tracking_ang_vel = 2.5  # 1.1
             vel_mismatch_exp = 1.0  # lin_z; ang x,y
             track_vel_hard = 1.0  # 0.5

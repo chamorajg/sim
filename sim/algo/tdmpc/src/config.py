@@ -7,16 +7,16 @@ class TDMPCConfigs:
     task: str = "walk"
     exp_name: str = "dora"
     device: str = "cuda:0"
-    action_repeat: int = 2
+    action_repeat: int = 1
     num_envs: int = 10
     max_clip_actions: float = 18.0
     clip_actions: str = max_clip_actions
     episode_length: int = 100
     max_episode_length: int = 2400 // action_repeat
     seed_steps: int = 200
-    episode_capacity : int = max_episode_length
+    episode_capacity : int = 100
     init_at_random_ep_len: bool = True
-    max_buffer_size: int = int(1e6)
+    max_buffer_size: int = int(1e7)
 
     lr: float = 5e-4
     modality: str = "state"
@@ -30,14 +30,14 @@ class TDMPCConfigs:
     num_samples: int = 512
     num_elites: int = 50
     mixture_coef: float = 0.05
-    min_std: float = 2.0
+    min_std: float = 0.5
     temperature: float = 0.5
     momentum: float = 0.1
     horizon: int = 5
-    std_schedule: str = f"linear(7.0, {min_std}, {5 * max_episode_length})"
+    std_schedule: str = f"linear(2.0, {min_std}, {5 * max_episode_length})"
     horizon_schedule: str = f"linear(1, {horizon},  {2 * max_episode_length})"
 
-    batch_size: int = 2048
+    batch_size: int = 8192
     reward_coef: float = 1
     value_coef: float = 0.75
     consistency_coef: float = 2

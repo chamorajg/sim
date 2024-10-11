@@ -420,6 +420,13 @@ class StompyProFreeEnv(LeggedRobot):
         Calculates a reward based on how closely the robot's linear velocity matches the commanded values.
         """
         lin_vel_error = torch.sum(torch.square(self.commands[:, :2] - self.base_lin_vel[:, :2]), dim=1)
+        stance_mask = self._get_gait_phase()
+        measured_heights = torch.sum(self.rigid_state[:, self.feet_indices, 2] * stance_mask, dim=1) / torch.sum(
+            stance_mask, dim=1
+        )
+        base_height = self.root_states[:, 2] - (measured_heights - self.cfg.asset.default_feet_height)
+        height_diff = torch.abs(base_height - self.cfg.rewards.base_height_target) 
+        lin_vel_error[height_diff > 0.05] = 10.0
         return torch.exp(-lin_vel_error * self.cfg.rewards.tracking_sigma)
 
     def _reward_tracking_ang_vel(self):
