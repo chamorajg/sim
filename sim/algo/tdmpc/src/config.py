@@ -34,7 +34,7 @@ class TDMPCConfigs:
     temperature: float = 0.5
     momentum: float = 0.1
     horizon: int = 5
-    std_schedule: str = f"linear(2.0, {min_std}, {5 * max_episode_length})"
+    std_schedule: str = f"linear(5.0, {min_std}, {5 * max_episode_length})"
     horizon_schedule: str = f"linear(1, {horizon},  {2 * max_episode_length})"
 
     batch_size: int = 8192

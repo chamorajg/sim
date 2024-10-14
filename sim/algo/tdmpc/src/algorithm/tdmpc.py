@@ -37,7 +37,13 @@ class TOLD(nn.Module):
     def next(self, z, a):
         """Predicts next latent state (d) and single-step reward (R)."""
         x = torch.cat([z, a], dim=-1)
-        return self._dynamics(x), self._reward(x)
+        return self._dynamics(x), self._reward(x) 
+    
+    def next_n(self, z, a, n_steps=1):
+        for i in range(n_steps):
+            x = torch.cat([z, a[i]], dim=-1)
+            z, reward = self._dynamics(x), self._reward(x)
+        return z, reward
 
     def pi(self, z, std=0):
         """Samples an action from the learned policy (pi)."""
@@ -201,6 +207,29 @@ class TDMPC:
         self.model.track_q_grad(True)
         return pi_loss.item()
 
+    def pretrain_dynamics(self, replay_buffer, num_steps=10000):
+        """Pretrain the dynamics model using data from the replay buffer."""
+        self.model.train()
+        for step in range(num_steps):
+            obs, next_obses, action, reward, mask, idxs, weights = replay_buffer.sample()
+            z = self.model.h(self.aug(obs))
+            loss, dynamics_loss, reward_loss = 0, 0, 0
+            for t in range(self.cfg.horizon):
+                z_next, reward_pred = self.model.next_n(z, action[:t + 1], n_steps = t + 1)
+                with torch.no_grad():
+                    target_z = self.model_target.h(self.aug(next_obses[t]))
+                    target_reward = reward[t]
+                dynamics_loss += torch.sum(h.mse(z_next, target_z) + h.l1(z_next, target_z), dim=1, keepdim=True)
+                reward_loss += torch.sum(h.mse(reward_pred, target_reward) + h.l1(reward_pred, target_reward), dim=1, keepdim=True)
+            loss = dynamics_loss + reward_loss
+            self.optim.zero_grad()
+            loss.mean().backward()
+            torch.nn.utils.clip_grad_norm_(list(self.model._dynamics.parameters()) + list(self.model._reward.parameters()), self.cfg.grad_clip_norm, error_if_nonfinite=False)
+            self.optim.step()
+            if step % self.cfg.update_freq == 0:
+                h.ema(self.model, self.model_target, self.cfg.tau)
+        self.model.eval()
+
     @torch.no_grad()
     def _td_target(self, next_obs, reward, mask):
         """Compute the TD-target from a reward and the observation at the following time step."""
@@ -229,16 +258,16 @@ class TDMPC:
         for t in range(self.cfg.horizon):
             # Predictions
             Qs = self.model.Q(z, action[t])
-            z, reward_pred = self.model.next(z, action[t])
+            z_dash, reward_pred = self.model.next_n(z, action[:t + 1], n_steps=t + 1)
             with torch.no_grad():
                 next_obs = self.aug(next_obses[t])
                 next_z = self.model_target.h(next_obs)
                 td_target = self._td_target(next_obs, reward[t], mask[t])
-            zs.append(z.detach())
+            zs.append(z_dash.detach())
             _z = self.model.h(self.aug(next_obses[t]))
             # Losses
             rho = self.cfg.rho**t
-            consistency_loss += mask[t] * rho * torch.sum(h.mse(z, next_z) + h.l1(z, next_z), dim=1, keepdim=True)
+            consistency_loss += mask[t] * rho * torch.sum(h.mse(z_dash, next_z) + h.l1(z_dash, next_z), dim=1, keepdim=True)
             latent_loss += rho * torch.sum(h.mse(_z, next_z) + h.l1(_z, next_z), dim=1, keepdim=True)
             reward_loss += rho * (h.mse(reward_pred, reward[t]) + h.l1(reward_pred, reward[t]))
             for i in range(self.cfg.num_q):

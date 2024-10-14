@@ -34,7 +34,7 @@ def set_seed(seed):
 class VideoRecorder:
     """Utility class for logging evaluation videos."""
 
-    def __init__(self, root_dir, render_size=384, fps=25):
+    def __init__(self, root_dir, render_size=384, fps=5):
         self.save_dir = (root_dir / "eval_video") if root_dir else None
         self.render_size = render_size
         self.fps = fps
@@ -95,6 +95,10 @@ def evaluate(test_env, agent, h1, step, video, action_repeat=1):
         actions = agent.plan(state, eval_mode=True, step=step, t0=t == 0)
         for _ in range(action_repeat):
             state, _, rewards, dones, infos = test_env.step(actions)
+            if dones.any().item():
+                test_env.episode_length_buf = torch.randint_like(
+                    test_env.episode_length_buf, high=int(test_env.max_episode_length - 50)
+                )
             ep_reward += rewards.cpu()
             t += 1
             if video:
@@ -112,7 +116,7 @@ def play(args: argparse.Namespace) -> None:
     env_cfg, _ = task_registry.get_cfgs(name=args.task)
     env, _ = task_registry.make_env(name=args.task, args=args)
 
-    fp = "/home/kasm-user/sim/logs/2024-10-11_00-30-21_walk_state_dora/models/tdmpc_policy_1010.pt"
+    fp = "/home/kasm-user/sim/logs/2024-10-14_08-34-19_walk_state_dora/models/tdmpc_policy_230.pt"
     config = torch.load(fp, weights_only=True)["config"]
     tdmpc_cfg = EvalTDMPCConfigs()
     env.set_camera(env_cfg.viewer.pos, env_cfg.viewer.lookat)

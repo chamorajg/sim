@@ -91,6 +91,7 @@ def train(args: argparse.Namespace) -> None:
     tdmpc_cfg.max_episode_length = int(env.max_episode_length)
     tdmpc_cfg.max_clip_actions = env.cfg.normalization.clip_actions
     tdmpc_cfg.clip_actions = f"{env.cfg.normalization.clip_actions}"
+    print(f"Max actions : {tdmpc_cfg.max_clip_actions}")
 
     agent = TDMPC(tdmpc_cfg)
     buffer = ReplayBuffer(tdmpc_cfg)
@@ -141,6 +142,8 @@ def train(args: argparse.Namespace) -> None:
         train_metrics = {}
         if step >= tdmpc_cfg.seed_steps:
             num_updates = tdmpc_cfg.seed_steps if step == tdmpc_cfg.seed_steps else tdmpc_cfg.episode_length
+            if step == tdmpc_cfg.seed_steps:
+                agent.pretrain_dynamics(buffer, num_steps = tdmpc_cfg.seed_steps)
             for i in range(num_updates):
                 train_metrics.update(agent.update(buffer, step + i))
 
